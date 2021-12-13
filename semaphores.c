@@ -4,7 +4,7 @@
 #include <pthread.h>
 #include <semaphore.h>
 
-#define BUFFER_SIZE 1
+#define BUFFER_SIZE 3
 #define DELAY   1
 
 int buffer_1[BUFFER_SIZE];
