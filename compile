@@ -1,0 +1,2 @@
+#!/bin/sh
+gcc ./semaphores.c -o sem -lpthread -lrt

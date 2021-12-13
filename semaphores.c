@@ -4,7 +4,7 @@
 #include <pthread.h>
 #include <semaphore.h>
 
-#define BUFFER_SIZE 2
+#define BUFFER_SIZE 1
 #define DELAY   1
 
 int buffer_1[BUFFER_SIZE];
@@ -50,12 +50,7 @@ void* producer_1() {
         sleep(DELAY);
 
         insertIntoBuffer(1, (int *)&buffer_1, &count_1);
-        printf("Producer 1 wrote to buffer nr 1. Buffer 1 state: [ ");
-        int i;
-        for (i = 0; i < count_1; i ++) {
-            printf("%d ", buffer_1[i]);
-        }
-        printf("]\n");
+        printf("Producer 1 wrote to buffer nr 1\n");
 
         sem_post(&sem_1_rw);
         sem_post(&sem_1_full);
@@ -66,12 +61,7 @@ void* producer_1() {
         sleep(DELAY);
 
         insertIntoBuffer(1, (int *)&buffer_2, &count_2);
-        printf("Producer 1 wrote to buffer nr 2. Buffer 2 state: [ ");
-        int j;
-        for (j = 0; j < count_2; j ++) {
-            printf("%d ", buffer_2[j]);
-        }
-        printf("]\n");
+        printf("Producer 1 wrote to buffer nr 2\n");
 
         sem_post(&sem_2_rw);
         sem_post(&sem_2_full);
@@ -87,12 +77,7 @@ void* producer_2() {
         sleep(DELAY);
 
         insertIntoBuffer(2, (int *)&buffer_2, &count_2);
-        printf("Producer 2 wrote to buffer nr 2. Buffer 2 state: [ ");
-        int i;
-        for (i = 0; i < count_2; i ++) {
-            printf("%d ", buffer_2[i]);
-        }
-        printf("]\n");
+        printf("Producer 2 wrote to buffer nr 2\n");
 
         sem_post(&sem_2_rw);
         sem_post(&sem_2_full);
@@ -103,12 +88,7 @@ void* producer_2() {
         sleep(DELAY);
 
         insertIntoBuffer(2, (int *)&buffer_3, &count_3);
-        printf("Producer 2 wrote to buffer nr 3. Buffer 3 state: [ ");
-        int j;
-        for (j = 0; j < count_3; j ++) {
-            printf("%d ", buffer_3[j]);
-        }
-        printf("]\n");
+        printf("Producer 2 wrote to buffer nr 3\n");
 
         sem_post(&sem_3_rw);
         sem_post(&sem_3_full);
