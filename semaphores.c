@@ -1,60 +1,189 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 #include <sys/sem.h>
+#include <pthread.h>
+#include <semaphore.h>
 
-union semun {
-    int val;
-    struct semid_ds *buf;
-    ushort* array;
-};
+#define DELAY   1
 
-int allocate_semaphore(key_t key, int sem_flags) {
-    return semget(key, 1, sem_flags);
+int buffer_1[64];
+int count_1 = 0;
+int buffer_2[64];
+int count_2 = 0;
+int buffer_3[64];
+int count_3 = 0;
+
+
+void insertIntoBuffer(char x, int* queue, int* count) {
+    queue[*count] = x;
+    (*count)++;
 }
 
-int deallocate_semaphore(int semid) {
-    union semun arg;
-    return semctl(semid, 1, IPC_RMID, arg);
+int readFromBuffer(int* queue, int* count) {
+    int result = queue[0];
+    int i;
+    for (i = 0; i < *count - 1; i ++) {
+        queue[i] = queue[i+1];
+    }
+    (*count)--;
+    return result;
 }
 
-int init_semaphore(int semid, int value) {
-    union semun arg;
-    unsigned short values[1];
-    values[0] = value;
-    arg.array = values;
-    return semctl(semid, 0, SETALL, arg);
+void printBuffer(int* queue, int* count) {
+    int i;
+    for (i = 0; i < *count; i ++) {
+        printf("%d ", queue[i]);
+    }
 }
 
 
+sem_t sem_1_rw, sem_1_empty, sem_1_full;
+sem_t sem_2_rw, sem_2_empty, sem_2_full;
+sem_t sem_3_rw, sem_3_empty, sem_3_full;
 
-void buf12_writer(uint* buf)
-{
-    printf("Wrote 1 to buffer nr 1\n");
-    buf[1] = 1;
+
+void* producer_1() {
+    int i;
+    for(;;) {
+        sem_wait(&sem_1_empty);
+        sem_wait(&sem_1_rw);
+        
+        sleep(DELAY);
+
+        insertIntoBuffer(1, (int *)&buffer_1, &count_1);
+        printf("Producer 1 wrote to buffer nr 1\n");
+
+        sem_post(&sem_1_rw);
+        sem_post(&sem_1_full);
+
+        sem_wait(&sem_2_empty);
+        sem_wait(&sem_2_rw);
+
+        sleep(DELAY);
+
+        insertIntoBuffer(1, (int *)&buffer_2, &count_2);
+        printf("Producer 1 wrote to buffer nr 2\n");
+
+        sem_post(&sem_2_rw);
+        sem_post(&sem_2_full);
+
+    }
 }
 
-void buf1_reader(uint* buf)
-{
-    printf("Read %u from buffer nr 1\n", buf[1]);
+void* producer_2() {
+    int i;
+    for(;;) {
+        sem_wait(&sem_2_empty);
+        sem_wait(&sem_2_rw);
+
+        sleep(DELAY);
+
+        insertIntoBuffer(2, (int *)&buffer_2, &count_2);
+        printf("Producer 2 wrote to buffer nr 2\n");
+
+        sem_post(&sem_2_rw);
+        sem_post(&sem_2_full);
+
+        sem_wait(&sem_3_empty);
+        sem_wait(&sem_3_rw);
+
+        sleep(DELAY);
+
+        insertIntoBuffer(2, (int *)&buffer_3, &count_3);
+        printf("Producer 2 wrote to buffer nr 3\n");
+
+        sem_post(&sem_3_rw);
+        sem_post(&sem_3_full);
+
+    }
+}
+
+void* consumer_1() {
+    int i;
+    for(;;) {
+        sem_wait(&sem_1_full);
+        sem_wait(&sem_1_rw);
+
+        sleep(DELAY);
+
+        printf("Consumer 1 read %d from buffer nr 1\n", 
+                readFromBuffer((int *)&buffer_1, &count_1));
+
+        sem_post(&sem_1_rw);
+        sem_post(&sem_1_empty);
+    }
+}
+
+void* consumer_2() {
+    int i;
+    for(;;) {
+        sem_wait(&sem_2_full);
+        sem_wait(&sem_2_rw);
+
+        sleep(DELAY);
+
+        printf("Consumer 2 read %d from buffer nr 2\n", 
+                readFromBuffer((int *)&buffer_2, &count_2));
+
+        sem_post(&sem_2_rw);
+        sem_post(&sem_2_empty);
+    }
+}
+
+void* consumer_3() {
+    int i;
+    for(;;) {
+        sem_wait(&sem_3_full);
+        sem_wait(&sem_3_rw);
+
+        sleep(DELAY);
+
+        printf("Consumer 3 read %d from buffer nr 3\n", 
+                readFromBuffer((int *)&buffer_3, &count_3));
+
+        sem_post(&sem_3_rw);
+        sem_post(&sem_3_empty);
+    } 
 }
 
 int main()
 {
-    printf("Hello, Semaphores!\n");
 
-    uint buf1[1], buf2[1], buf3[1];
+    sem_init(&sem_1_rw, 0, 1);
+    sem_init(&sem_1_empty, 0, 1);
+    sem_init(&sem_1_full, 0, 0);
+    sem_init(&sem_2_rw, 0, 1);
+    sem_init(&sem_2_empty, 0, 1);
+    sem_init(&sem_2_full, 0, 0);
+    sem_init(&sem_3_rw, 0, 1);
+    sem_init(&sem_3_empty, 0, 1);
+    sem_init(&sem_3_full, 0, 0);
 
-    buf12_writer(buf1);
-    buf1_reader(buf1);
+    pthread_t t1, t2, t3, t4, t5;
+
+    pthread_create(&t1,NULL,producer_1,NULL);
+    pthread_create(&t2,NULL,producer_2,NULL);
+    pthread_create(&t3,NULL,consumer_1,NULL);
+    pthread_create(&t4,NULL,consumer_2,NULL);
+    pthread_create(&t5,NULL,consumer_3,NULL);
+
+    pthread_join(t1,NULL);
+    pthread_join(t2,NULL);
+    pthread_join(t3,NULL);
+    pthread_join(t4,NULL);
+    pthread_join(t5,NULL);
+
+
+    sem_destroy(&sem_1_empty);
+    sem_destroy(&sem_1_full);
+    sem_destroy(&sem_1_rw);
+    sem_destroy(&sem_2_empty);
+    sem_destroy(&sem_2_full);
+    sem_destroy(&sem_2_rw);
+    sem_destroy(&sem_3_empty);
+    sem_destroy(&sem_3_full);
+    sem_destroy(&sem_3_rw);
+
     return 0;
 }
-
-
-
-
-
-
-
-
-
-
-
